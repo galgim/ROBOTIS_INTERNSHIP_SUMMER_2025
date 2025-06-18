@@ -35,20 +35,27 @@ esp = espnow.ESPNow()
 esp.active(True)
 
 # Define the MAC address of the receiving ESP32 (ESP32 B)
-peer = b'x!\x84\xc68\xb0'
+peer = b'x!\x84\xc68\xb0' #found via 
 esp.add_peer(peer)
 
 def read_analog_inputs():
+    """Reads ADC pins and redefines vector array to the voltage value.
+
+    Each ADC pin has a step voltage of 4096 steps. Voltage is found by 
+    dividing the reading by 4096 and multiplying by a max voltage of 3.3V. 
+    """
     count = 0
     for control in movement_vectors.keys(): #for all movement vector names, read their voltage level and update the dictionary
-        adc_reading = arm_motor_pins[control].read()
+        adc_reading = arm_motor_pins[control].read() # analog read the respective ADC pin. returns a value from 0-4095
+        voltage = adc_reading/4096 * 3.3 # reading divided by steps multiplied by max voltage
+        print(f"ADC={adc_reading}, V={voltage}") # debug line
         movement_vectors[control] = adc_reading
-        vector_array[count] = adc_reading.to_bytes(10,big)
+        vector_array[count] = adc_reading.to_bytes(3,'big')
         count = count + 1
-            
+
 while True:
     read_analog_inputs()
     print("---------------------\n")
     print(vector_array)
-    esp.send(peer, vector_array)
+    #esp.send(peer, vector_array)
     time.sleep(2)

@@ -5,7 +5,9 @@ import network #access ESP network library
 
 #file imports
 import motor_movement #motor_movement.py 
-import jetson_communication
+import jetson_communication #jetson_communication.py
+
+jetson_listen_byte_size = 24 # change value based on size sent from Jetson
 
 #hardware UART with 115kHz, tx pin 17, rx pin 16, 1sec timeout 
 uart = UART(1, baudrate=115200, tx=17, rx=16, timeout=1000)
@@ -18,8 +20,14 @@ sta.disconnect()      # For ESP8266
 esp = espnow.ESPNow()
 esp.active(True)
 
+
 def uart_send(message):
-    uart.write(b'wrap_message(message)')
+    """Wraps message in start and end characters and sends to Jetson.
+
+
+    """
+    wrapped_message = wrap_message(message) 
+    uart.write(wrapped_message)
 
 def strip_message(message):
     """Removes start and end character from message
@@ -37,16 +45,17 @@ def validate_esp_message(message):
     Function exists in the case that data begins to be corrupted 
     or longer than expected. Additional booleans can be added in the future.
     """
-    bool_message_is_24_bytes = len(message) == 24
-    return bool_message_is_24_bytes
+    bool_message_is_n_bytes = len(message) == jetson_listen_byte_size
+    return bool_message_is_n_bytes
 
 #continously poll for data from both controller ESP-NOW and Jetson UART
 while True:
-    print("Start of Line\n")
-    if(esp.any()):
+    if(esp.any()): # returns 0 if nothing in buffer, positive # otherwise
         _, esp_message = esp.recv() #receive data from controller esp
         if(validate_esp_message(esp_message)):
             move_motors(strip_message(esp_message))
+
+
     text_buffer = bytearray(8)
     if uart.any(): # returns 0 if nothing in buffer, positive # otherwise
         raw_message = uart.readinto(text_buffer[8])
