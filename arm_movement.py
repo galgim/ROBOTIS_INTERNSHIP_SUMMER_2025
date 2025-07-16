@@ -17,7 +17,7 @@ ADDR_GOAL_POSITION = 116 # address to write a target position to
 TORQUE_ENABLE = 1 # value to enable torque (1 = on)
 
 # MOTOR CONFIGURATION
-motor_ids = [1, 2, 3, 4, 5, 6, 7, 8] # 8(? (unsure of exact number. consult mech e.)) Dynamixel motor ID's
+motor_ids = [1, 2, 3, 4, 5, 6] # 6 Dynamixel motor ID's
 motor_ranges =
 {
     1: (0, 4095), # arm base yaw
@@ -26,8 +26,6 @@ motor_ranges =
     4: (0, 4095), # wrist
     5: (0, 4095), # grabber rotate
     6: (0, 4095), # grabber open/close
-    7: (0, 4095), # placeholder
-    8: (0, 4095), # placeholder
 } # ***range of motion is a placeholder***. replace with actual range of motion for each given joint
 
 # INITIALIZE DYNAMIXEL COMMUNICATION
@@ -69,10 +67,10 @@ def adc_to_dxl_position(adc):
 # MAIN LOOP
 while True:
     if uart.in_waiting >= 16:
-        # read 16 bytes (8 values, each 2 bytes) ***(change if not 8 motors)***
-        data = uart.read(16)
+        # read 12 bytes (6 values, each 2 bytes)
+        data = uart.read(12)
 
-        for i in range(8):
+        for i in range(6):
             # extract 2 bytes per joint and convert to int
             adc_val = int.from_bytes(data[i*2:i*2+2], 'big')
 
