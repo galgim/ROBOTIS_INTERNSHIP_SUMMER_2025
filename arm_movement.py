@@ -2,19 +2,15 @@ from dynamixel_sdk import * # Dynamixel SDK for communication
 import serial # to communicate with ESP32 via UART
 import time
 
+
 # DYNAMIXEL SETUP
 DEVICENAME = '/dev/ttyUSB0' # USB port for U2D2
 BAUDRATE_DXL = 57600 # baudrate for talking to Dynamixel motors
 PROTOCOL_VERSION = 2.0 # Dynamixel Protocol 2.0
 
 # UART SETUP (Jetson <-> ESP32)
-UART_PORT = '/dev/ttyTHS1' # Jetson UART (pins 8/10 on GPIO header)
+UART_PORT = '/dev/ttyTHS1' # UART port for ESP32
 UART_BAUD = 115200 # baudrate for ESP32 UART config
-
-# DYNAMIXEL ADDRESSES
-ADDR_TORQUE_ENABLE = 64 # address to enable/disable torque
-ADDR_GOAL_POSITION = 116 # address to write a target position to
-TORQUE_ENABLE = 1 # value to enable torque (1 = on)
 
 # MOTOR CONFIGURATION
 motor_ids = [1, 2, 3, 4, 5, 6] # 6 Dynamixel motor ID's
@@ -28,58 +24,50 @@ motor_ranges =
     6: (0, 4095), # grabber open/close
 } # ***range of motion is a placeholder***. replace with actual range of motion for each given joint
 
-# INITIALIZE DYNAMIXEL COMMUNICATION
-portHandler = PortHandler(DEVICENAME) # create port handler for USB device
-packetHandler = PacketHandler(PROTOCOL_VERSION) # create packet handler for specified protocol
+# Global handles
+portHandler = None # Dynamixel port handler
+packetHandler = None # Dynamixel packet handler
+ 
+def portInitialization(device_name, ids): # Initialize the port for Dynamixel motors
+    global portHandler, packetHandler
+    portHandler = PortHandler(device_name)
+    packetHandler = PacketHandler(PROTOCOL_VERSION)
+    if not portHandler.openPort():
+        # exit if port cannot be opened
+        print("ERROR: Failed to open the U2D2 port")
+        exit()
+    if not portHandler.setBaudRate(BAUDRATE_DXL):
+        # exit if baudrate cannot be set
+        print("ERROR: Failed to set Dynamixel baudrate")
+        exit()
+    for dxl_id in ids:
+        # to enable torque for each motor
+        dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(
+            portHandler, dxl_id, ADDR_TORQUE_ENABLE, TORQUE_ENABLE)
+        if dxl_comm_result != COMM_SUCCESS:
+            # handle communication error
+            print(f"Communication error on motor {dxl_id}: {packetHandler.getTxRxResult(dxl_comm_result)}")
+        elif dxl_error != 0:
+            # handle packet error
+            print(f"Dynamixel error on motor {dxl_id}: {packetHandler.getRxPacketError(dxl_error)}")
 
-# open the port and set baudrate
-if not portHandler.openPort():
-    print("ERROR: Failed to open the U2D2 port")
-    exit()
-if not portHandler.setBaudRate(BAUDRATE_DXL):
-    print("ERROR: Failed to set Dynamixel baudrate")
-    exit()
+def adc_to_dxl_position(adc, motor_id):
+    # convert ADC value to Dynamixel position based on motor ID
+    min_pos, max_pos = motor_ranges[motor_id] # get the range for the specific motor
+    ratio = adc / 4095.0 # scale ADC value to 0-1 range
+    pos = int(min_pos + ratio * (max_pos - min_pos)) # scale ADC to motor range
+    return max(min_pos, min(max_pos, pos)) # ensure position is within motor limits
 
-# enable torque for each motor
-for dxl_id in motor_ids:
-    # send 1 byte command to enable torque (turn on motor command)
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(
-        portHandler, dxl_id, ADDR_TORQUE_ENABLE, TORQUE_ENABLE)
-    # check for comm errors (ex usb)
-    if dxl_comm_result != COMM_SUCCESS:
-        print(f"Communication error on motor {dxl_id}: {packetHandler.getTxRxResult(dxl_comm_result)}")
-    # check for motor errors (ex out of range)
-    elif dxl_error != 0:
-        print(f"Dynamixel error on motor {dxl_id}: {packetHandler.getRxPacketError(dxl_error)}")
+def simMotorRun(angles, ids):
+    # angles: list of angles (0-180), ids: list of motor IDs
+    for angle, dxl_id in zip(angles, ids):
+        # Convert angle (0-180) to ADC (0-4095)
+        adc_val = int((angle / 180.0) * 4095) # scale angle to ADC value
+        dxl_pos = adc_to_dxl_position(adc_val, dxl_id) # convert ADC to Dynamixel position
+        packetHandler.write4ByteTxRx(portHandler, dxl_id, ADDR_GOAL_POSITION, dxl_pos) # send pos command to motor
 
-# INITIALIZE UART TO RECEIVE ESP32 DATA
-uart = serial.Serial(UART_PORT, baudrate=UART_BAUD, timeout=1)
-
-# HELPER FUNCTION
-def adc_to_dxl_position(adc):
-    # convert ADC value (0–4095) to a position within this motor's range of motion.
-    # each motor maps the full ADC range proportionally into its own range
-    min_pos, max_pos = motor_ranges[motor_id]
-    ratio = adc_val / 4095.0
-    pos = int(min_pos + ratio * (max_pos - min_pos))
-    return max(min_pos, min(max_pos, pos)) 
-
-# MAIN LOOP
-while True:
-    if uart.in_waiting >= 16:
-        # read 12 bytes (6 values, each 2 bytes)
-        data = uart.read(12)
-
-        for i in range(6):
-            # extract 2 bytes per joint and convert to int
-            adc_val = int.from_bytes(data[i*2:i*2+2], 'big')
-
-            # convert ADC to motor position
-            dxl_pos = adc_to_dxl_position(adc_val)
-
-            # send position to appropriate Dynamixel motor
-            dxl_id = motor_ids[i]
-            packetHandler.write4ByteTxRx(portHandler, dxl_id, ADDR_GOAL_POSITION, dxl_pos)
-
-    # delay to prevent bus getting spammed
-    time.sleep(0.02)
+def portTermination():
+    # terminate port connection (EXPLODES the computer)
+    global portHandler
+    if portHandler:
+        portHandler.closePort()
