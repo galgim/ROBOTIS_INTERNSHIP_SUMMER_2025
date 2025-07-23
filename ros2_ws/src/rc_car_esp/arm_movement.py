@@ -2,6 +2,10 @@ from dynamixel_sdk import * # Dynamixel SDK for communication
 import serial # to communicate with ESP32 via UART
 import time
 
+#**********************************TEMP FOR TESTING***********************************
+ADDR_TORQUE_ENABLE = 64
+ADDR_GOAL_POSITION = 116
+TORQUE_ENABLE = 1
 
 # DYNAMIXEL SETUP
 DEVICENAME = '/dev/ttyUSB0' # USB port for U2D2
@@ -70,3 +74,11 @@ def portTermination():
     global portHandler
     if portHandler:
         portHandler.closePort()
+
+#**********************************TEMP FOR TESTING***********************************
+if __name__ == "__main__":
+    portInitialization(DEVICENAME, motor_ids)
+    test_angles = [90, 90, 90, 90, 90, 90]  # Change these as needed for your test
+    simMotorRun(test_angles, motor_ids)
+    time.sleep(2)
+    portTermination()
