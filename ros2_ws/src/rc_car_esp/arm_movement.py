@@ -14,8 +14,7 @@ UART_BAUD = 115200 # baudrate for ESP32 UART config
 
 # MOTOR CONFIGURATION
 motor_ids = [1, 2, 3, 4, 5, 6] # 6 Dynamixel motor ID's
-motor_ranges =
-{
+motor_ranges = {
     1: (0, 4095), # arm base yaw
     2: (0, 4095), # shoulder
     3: (0, 4095), # elbow
