@@ -15,7 +15,7 @@ def bytes_to_adc(triplet: bytes) -> int:
 def map_adc_to_angles(adc: int, min_adc=0, max_adc=4095, min_angle=0, max_angle=180) -> float: # ***max/mins STC***
     return (adc - min_adc) * (max_angle - min_angle)/(max_adc - min_adc) + min_angle # map ADC value to angle
 
-motor_ids = [1, 2, 3, 4, 5, 6] # motor setup stuff
+motor_ids = [0, 1, 2, 3, 4, 5] # motor setup stuff
 portInitialization('/dev/ttyUSB0', motor_ids) # initialize port for motor control
 
 try: # main loop to read from UART and process data
