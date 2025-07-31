@@ -3,13 +3,20 @@ import serial # to communicate with ESP32 via UART
 import time
 
 #**********************************TEMP FOR TESTING***********************************
+ADDR_PRESENT_POSITION = 132 #Address of the positions of the motors
+ADDR_PROFILE_VELOCITY = 112 #Address of the velocity of the motors
+ADDR_GOAL_POSITION = 116 #Address of goal position
+ADDR_MOVING = 122 #Address of value that states if motor is moving or not
+ADDR_MOVING_STATUS = 123
+DXL_MOVING_STATUS_THRESHOLD = 10    # Dynamixel moving status threshold
+LEN_GOAL_POSITION = 4 #Byte Length of goal position
+LEN_PRESENT_POSITION = 4 #Byte length of present positiond
 ADDR_TORQUE_ENABLE = 64
-ADDR_GOAL_POSITION = 116
 TORQUE_ENABLE = 1
 
 # DYNAMIXEL SETUP
 DEVICENAME = '/dev/ttyUSB0' # USB port for U2D2
-BAUDRATE_DXL = 57600 # baudrate for talking to Dynamixel motors
+BAUDRATE_DXL = 1000000 # baudrate for talking to Dynamixel motors
 PROTOCOL_VERSION = 2.0 # Dynamixel Protocol 2.0
 
 # UART SETUP (Jetson <-> ESP32)
@@ -17,14 +24,14 @@ UART_PORT = '/dev/ttyTHS1' # UART port for ESP32
 UART_BAUD = 115200 # baudrate for ESP32 UART config
 
 # MOTOR CONFIGURATION
-motor_ids = [1, 2, 3, 4, 5, 6] # 6 Dynamixel motor ID's
+motor_ids = [0, 1, 2, 3, 4, 5] # 6 Dynamixel motor ID's
 motor_ranges = {
-    1: (0, 4095), # arm base yaw
-    2: (0, 4095), # shoulder
-    3: (0, 4095), # elbow
-    4: (0, 4095), # wrist
-    5: (0, 4095), # grabber rotate
-    6: (0, 4095), # grabber open/close
+    0: (0, 4095), # arm base yaw
+    1: (0, 4095), # shoulder
+    2: (0, 4095), # elbow
+    3: (0, 4095), # wrist pitch
+    4: (0, 4095), # wrist roll
+    5: (0, 4095), # grabber open/close
 } # ***range of motion is a placeholder***. replace with actual range of motion for each given joint
 
 # Global handles
@@ -69,6 +76,23 @@ def simMotorRun(angles, ids):
         dxl_pos = adc_to_dxl_position(adc_val, dxl_id) # convert ADC to Dynamixel position
         packetHandler.write4ByteTxRx(portHandler, dxl_id, ADDR_GOAL_POSITION, dxl_pos) # send pos command to motor
 
+def WriteMotorData(motorID, data_address, data_inputs):
+    dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(
+    portHandler, motorID, data_address, data_inputs)
+    # if dxl_comm_result != COMM_SUCCESS:
+    #     print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    # elif dxl_error != 0:
+    #     print("%s" % packetHandler.getRxPacketError(dxl_error))
+
+def dxlSetVelo(vel_array, dxlIDs):
+    if (len(vel_array) == len(dxlIDs)):
+        idNum = len(dxlIDs)
+        for id in range(idNum):
+                    WriteMotorData(dxlIDs[id], ADDR_PROFILE_VELOCITY, vel_array[id])
+    else:
+        print("ERROR: Number of velocity inputs not matching with number of DXL ID inputs!")
+    print("-------------------------------------")
+
 def portTermination():
     # terminate port connection (EXPLODES the computer)
     global portHandler
@@ -78,7 +102,8 @@ def portTermination():
 #**********************************TEMP FOR TESTING***********************************
 if __name__ == "__main__":
     portInitialization(DEVICENAME, motor_ids)
-    test_angles = [90, 90, 90, 90, 90, 90]  # Change these as needed for your test
+    test_angles = [0, 0, 0, 0, 0, 0]  # Change these as needed for your test
+    dxlSetVelo([1, 1, 1, 1, 1, 1], motor_ids) # Set velocity for testing
     simMotorRun(test_angles, motor_ids)
     time.sleep(2)
     portTermination()
