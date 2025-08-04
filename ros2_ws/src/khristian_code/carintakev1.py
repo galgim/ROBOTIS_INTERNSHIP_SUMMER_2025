@@ -1,3 +1,6 @@
+#this is still mostly caleb's code, but there arent many changes to be made
+#its just changing how we read the incoming array and send the encoder array to the jetson
+#
 from machine import UART, Pin
 from time import sleep
 import espnow #ESP-NOW library
@@ -68,4 +71,5 @@ while True:
         raw_message = uart.readinto(text_buffer[8])
         if(validate_jetson_message(raw_message)): 
             uart.write(strip_message(raw_message)) 
+
     sleep(2)
