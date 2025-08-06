@@ -28,10 +28,11 @@ class ESPUART(Node):
         NUM_VALUES = 8 # number of motors
         TOTAL_BYTES = BYTES_PER_INT * NUM_VALUES # total bytes to read
 
-        if self.ser.in_waiting >= TOTAL_BYTES: # check if enough bytes are available
-            data = self.ser.read(TOTAL_BYTES) # read the bytes
-            values = self.structUnpack('8i', data)
-
+        if self.ser.in_waiting > 0: # check if any data has been sent
+            tag = self.ser.readline().decode('utf-8').strip()
+            if tag == "movementArray":
+                data = self.ser.read(TOTAL_BYTES) # read the bytes
+                values = self.structUnpack('8i', data)
             if values:  # Only publish if unpack was successful
                 msg = Int32MultiArray() # create a message to publish
                 msg.data = values # assign unpacked values to message
