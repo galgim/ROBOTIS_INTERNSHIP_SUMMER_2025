@@ -15,7 +15,7 @@ ADDR_TORQUE_ENABLE = 64
 TORQUE_ENABLE = 1
 
 # DYNAMIXEL SETUP
-DEVICENAME = '/dev/ttyUSB0' # USB port for U2D2
+DEVICENAME = '/dev/ttyUSB1' # USB port for U2D2
 BAUDRATE_DXL = 1000000 # baudrate for talking to Dynamixel motors
 PROTOCOL_VERSION = 2.0 # Dynamixel Protocol 2.0
 

@@ -12,7 +12,7 @@ class ESPUART(Node):
         # initialize UART serial connection
         self.ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1) # /dev/ttyUSB0 is the UART port for ESP32
         self.publisher_ = self.create_publisher(Int32MultiArray, 'esp_values', 10) # topic to publish ADC values
-        self.timer = self.create_timer(0.05, self.espRead)  # 20 Hz read rate
+        self.timer = self.create_timer(0.01, self.espRead)  # 20 Hz read rate
 
     # function to unpack bytes into list of integers
     def structUnpack(self, fmt, data):
