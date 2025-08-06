@@ -72,7 +72,7 @@ def simMotorRun(angles, ids):
     # angles: list of angles (0-180), ids: list of motor IDs
     for angle, dxl_id in zip(angles, ids):
         # Convert angle (0-180) to ADC (0-4095)
-        adc_val = int((angle / 180.0) * 4095) # scale angle to ADC value
+        adc_val = int((angle / 360.0) * 4095) # scale angle to ADC value
         dxl_pos = adc_to_dxl_position(adc_val, dxl_id) # convert ADC to Dynamixel position
         packetHandler.write4ByteTxRx(portHandler, dxl_id, ADDR_GOAL_POSITION, dxl_pos) # send pos command to motor
 
