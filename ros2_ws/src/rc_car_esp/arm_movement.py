@@ -99,11 +99,40 @@ def portTermination():
     if portHandler:
         portHandler.closePort()
 
-#**********************************TEMP FOR TESTING***********************************
+# motor angle shtuff
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Int32MultiArray
+
+class ArmMover(Node): # node to control arm movement
+    def __init__(self):
+        super().__init__('arm_mover')
+        portInitialization(DEVICENAME, motor_ids) # initialize Dynamixel port
+        dxlSetVelo([5, 5, 5, 5, 5, 5], motor_ids)  # set a reasonable velocity for motors
+        self.subscription = self.create_subscription(Int32MultiArray, 'esp_values', self.listener_callback, 10)
+            # subscribe to esp_values topic
+        self.subscription  # prevent unused variable warning
+
+    def listener_callback(self, msg):
+        angles = msg.data  # should be a list of 6 integers (0-180)
+        if len(angles) == 6: # ensure correct number of angles
+            simMotorRun(angles, motor_ids) # run motors with the given angles
+        else:
+            self.get_logger().warn("Received angle array of incorrect length.") # handle incorrect length
+
+    def destroy_node(self): # clean up node and terminate port (EXPLODES the computer)
+        portTermination()
+        super().destroy_node()
+
+def main(args=None): # main function to initialize ROS2 and run the ArmMover node
+    rclpy.init(args=args) # initialize ROS2
+    node = ArmMover() # create an instance of the ArmMover node
+    try:
+        rclpy.spin(node) # keep the node running
+    except KeyboardInterrupt: # handle keyboard interrupt
+        pass
+    node.destroy_node() # clean up node (incalculable death and destruction)
+    rclpy.shutdown() # shutdown ROS2
+
 if __name__ == "__main__":
-    portInitialization(DEVICENAME, motor_ids)
-    test_angles = [0, 0, 0, 0, 0, 0]  # Change these as needed for your test
-    dxlSetVelo([1, 1, 1, 1, 1, 1], motor_ids) # Set velocity for testing
-    simMotorRun(test_angles, motor_ids)
-    time.sleep(2)
-    portTermination()
+    main()

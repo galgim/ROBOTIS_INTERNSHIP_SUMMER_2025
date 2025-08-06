@@ -1,44 +1,49 @@
-# esp_uart.py
-# This script reads data from a UART port, processes it into ADC values, maps them to angles,
-# and sends the angles to a motor control function.
+import serial # to communicate with ESP32 via UART
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Int32MultiArray
+import struct # for struct packing/unpacking
 
-import serial # import serial library for UART communication
-from arm_movement import portInitialization, simMotorRun, portTermination # import functions from arm_movement.py
+# ESP32 UART communication setup
+class ESPUART(Node):
+    def __init__(self):
+        super().__init__('esp_uart')
 
-BYTES_PER_MOTOR = 3 # number of bytes per motor (3 bytes for ADC value)
-NUM_MOTORS = 6 # number of motors
-TOTAL_BYTES = BYTES_PER_MOTOR * NUM_MOTORS # total bytes to read
+        # initialize UART serial connection
+        self.ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1) # /dev/ttyUSB0 is the UART port for ESP32
+        self.publisher_ = self.create_publisher(Int32MultiArray, 'esp_values', 10) # topic to publish ADC values
+        self.timer = self.create_timer(0.05, self.espRead)  # 20 Hz read rate
 
-def bytes_to_adc(triplet: bytes) -> int:
-    return int.from_bytes(triplet, 'big') # convert 3 byte chunk to integer ADC value
+    # function to unpack bytes into list of integers
+    def structUnpack(self, fmt, data):
+        try:
+            return list(struct.unpack(fmt, data))  # unpack data into ints
+        except struct.error:
+            self.get_logger().warn("Incomplete or malformed data received") # handle unpacking error
+            return []
 
-def map_adc_to_angles(adc: int, min_adc=0, max_adc=4095, min_angle=0, max_angle=180) -> float: # ***max/mins STC***
-    return (adc - min_adc) * (max_angle - min_angle)/(max_adc - min_adc) + min_angle # map ADC value to angle
+    # main loop (reads fixed number of bytes per message)
+    def espRead(self):
+        BYTES_PER_INT = 4 # 4 bytes per motor
+        NUM_VALUES = 6 # number of motors
+        TOTAL_BYTES = BYTES_PER_INT * NUM_VALUES # total bytes to read
 
-motor_ids = [0, 1, 2, 3, 4, 5] # motor setup stuff
-portInitialization('/dev/ttyUSB0', motor_ids) # initialize port for motor control
+        if self.ser.in_waiting >= TOTAL_BYTES: # check if enough bytes are available
+            data = self.ser.read(TOTAL_BYTES) # read the bytes
+            values = self.structUnpack('6i', data)
 
-try: # main loop to read from UART and process data
-    with serial.Serial('/dev/ttyTHS1', baudrate=115200, timeout=1) as uart: # open UART port
-        while True:
-            if uart.in_waiting >= TOTAL_BYTES: # check if enough data is available
-                data = uart.read(TOTAL_BYTES) # read the expected number of bytes
-                if len(data) == TOTAL_BYTES: # ensure we read the correct amount
-                    # Process the data into ADC values and angles
-                    adc_values = [bytes_to_adc(data[i:i+BYTES_PER_MOTOR]) for i in range(0, TOTAL_BYTES, BYTES_PER_MOTOR)]
-                    angles = [map_adc_to_angles(adc) for adc in adc_values] # map ADC values to angles
+            if values:  # Only publish if unpack was successful
+                msg = Int32MultiArray() # create a message to publish
+                msg.data = values # assign unpacked values to message
+                self.publisher_.publish(msg) # publish the message
+                self.get_logger().info(f"ADC Values: {values}") # log the values
 
-                    print("ADC: ", adc_values) # print ADC values
-                    print("Angles: ", angles) # print angle values
+def main(args=None):
+    rclpy.init(args=args) # initialize ROS2
+    node = ESPUART() # create an instance of the ESPUART node
+    rclpy.spin(node) # keep the node running
+    node.destroy_node() # clean up node (explodes the computer)
+    rclpy.shutdown() # shutdown ROS2
 
-                    simMotorRun(angles, motor_ids) # send angles to simMotorRun function
-                else:
-                    print(f"Warning: Expected {TOTAL_BYTES} bytes, got {len(data)}") # handle unexpected byte count
-
-except KeyboardInterrupt: # handle Ctrl+C input
-    print("PERISH!!!") # EXPLODES the computer (jk it just stops the program)
-except Exception as e: # handle other exceptions
-    print(f"Error: {e}") # print error message
-
-finally: # clean up resources
-    portTermination() # terminate port connection
+if __name__ == '__main__':
+    main()
