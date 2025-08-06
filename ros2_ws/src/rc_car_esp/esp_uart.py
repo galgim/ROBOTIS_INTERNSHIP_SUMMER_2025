@@ -25,12 +25,12 @@ class ESPUART(Node):
     # main loop (reads fixed number of bytes per message)
     def espRead(self):
         BYTES_PER_INT = 4 # 4 bytes per motor
-        NUM_VALUES = 6 # number of motors
+        NUM_VALUES = 8 # number of motors
         TOTAL_BYTES = BYTES_PER_INT * NUM_VALUES # total bytes to read
 
         if self.ser.in_waiting >= TOTAL_BYTES: # check if enough bytes are available
             data = self.ser.read(TOTAL_BYTES) # read the bytes
-            values = self.structUnpack('6i', data)
+            values = self.structUnpack('8i', data)
 
             if values:  # Only publish if unpack was successful
                 msg = Int32MultiArray() # create a message to publish

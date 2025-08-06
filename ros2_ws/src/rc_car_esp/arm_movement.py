@@ -114,8 +114,10 @@ class ArmMover(Node): # node to control arm movement
         self.subscription  # prevent unused variable warning
 
     def listener_callback(self, msg):
-        angles = msg.data  # should be a list of 6 integers (0-180)
-        if len(angles) == 6: # ensure correct number of angles
+        angles = msg.data  # should be a list of 8 integers (0-180)
+        if len(angles) == 8: # ensure correct number of angles
+            angles.pop(0)
+            angles.pop(0) # remove first two values (joystick inputs)
             simMotorRun(angles, motor_ids) # run motors with the given angles
         else:
             self.get_logger().warn("Received angle array of incorrect length.") # handle incorrect length
