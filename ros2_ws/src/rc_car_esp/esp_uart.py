@@ -29,7 +29,7 @@ class ESPUART(Node):
         TOTAL_BYTES = BYTES_PER_INT * NUM_VALUES # total bytes to read
 
         if self.ser.in_waiting > 0: # check if any data has been sent
-            tag = self.ser.readline().decode('utf-8').strip()
+            tag = self.ser.readline().decode('utf-8', errors='ignore').strip()
             if tag == "movementArray":
                 data = self.ser.read(TOTAL_BYTES) # read the bytes
                 values = self.structUnpack('8i', data)
