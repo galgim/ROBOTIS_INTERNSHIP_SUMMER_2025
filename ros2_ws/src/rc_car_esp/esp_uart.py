@@ -33,11 +33,11 @@ class ESPUART(Node):
             if tag == "movementArray":
                 data = self.ser.read(TOTAL_BYTES) # read the bytes
                 values = self.structUnpack('8i', data)
-            if values:  # Only publish if unpack was successful
-                msg = Int32MultiArray() # create a message to publish
-                msg.data = values # assign unpacked values to message
-                self.publisher_.publish(msg) # publish the message
-                self.get_logger().info(f"ADC Values: {values}") # log the values
+                if values:  # Only publish if unpack was successful
+                    msg = Int32MultiArray() # create a message to publish
+                    msg.data = values # assign unpacked values to message
+                    self.publisher_.publish(msg) # publish the message
+                    self.get_logger().info(f"ADC Values: {values}") # log the values
 
 def main(args=None):
     rclpy.init(args=args) # initialize ROS2
