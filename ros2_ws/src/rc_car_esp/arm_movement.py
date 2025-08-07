@@ -31,7 +31,7 @@ motor_ranges = {
     2: (0, 4095), # elbow
     3: (0, 4095), # wrist pitch
     4: (0, 4095), # wrist roll
-    5: (0, 4095), # grabber open/close
+    5: (0, 4095), # grabber open/close (open = 0, closed = 80 (adc = 2283))
 } # ***range of motion is a placeholder***. replace with actual range of motion for each given joint
 
 # Global handles
@@ -108,7 +108,7 @@ class ArmMover(Node): # node to control arm movement
     def __init__(self):
         super().__init__('arm_mover')
         portInitialization(DEVICENAME, motor_ids) # initialize Dynamixel port
-        dxlSetVelo([5, 5, 5, 5, 5, 5], motor_ids)  # set a reasonable velocity for motors
+        dxlSetVelo([10, 10, 10, 10, 10, 10], motor_ids)  # set a reasonable velocity for motors
         self.subscription = self.create_subscription(Int32MultiArray, 'esp_values', self.listener_callback, 10)
             # subscribe to esp_values topic
         self.subscription  # prevent unused variable warning
