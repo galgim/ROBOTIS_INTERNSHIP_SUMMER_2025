@@ -4,10 +4,13 @@
 // This esp is 3C:8A:1F:A1:61:B8
 uint8_t CarMacAddress[] = {0x3C, 0x8A, 0x1F, 0xA0, 0xDF, 0xC0};
 uint8_t data[32];
+int32_t movementArray[8] = {0};
 #define Y_Pin 32
 #define X_Pin 34
-#define Button *****
+#define Button 2
 
+bool pressed = false;
+bool closed = false;
 // Rotary encoder struct
 struct RotaryEncoderData {
     const uint8_t clkPin; // pin for clock signal
@@ -75,7 +78,7 @@ void setup() {
     Serial.begin(115200); // initialize serial communication at 115200 baud rate
     WiFi.mode(WIFI_STA); // set WiFi mode to station (client) mode
     pinMode(Button, INPUT);
-    digitalRead(Button)
+    int buttonState = digitalRead(Button);
 
     if (esp_now_init() != ESP_OK) { // initialize ESP-NOW
         Serial.println("Error initializing ESP-NOW"); // print an error message if initialization fails
@@ -108,18 +111,30 @@ void loop() {
         encoders[i].update(); // call the update function to read the current state of the encoder and update its value
     }
 
+    int buttonState = digitalRead(Button);
+    if (buttonState == HIGH && pressed == false) {
+      if (closed == false) {
+        movementArray[7] = 80;
+        closed = true;
+      }
+      else {
+        movementArray[7] = 0;
+        closed = false;
+      }
+      pressed = true;
+      }
+    else if (buttonState == LOW) {
+      pressed = false;
+      }
+
     // Only send data every 50 ms
     if (millis() - lastSend > 50) { // check if 50 ms have passed since the last data send
-        int32_t movementArray[8] = {0}; // initialize an array to hold the movement data
-
         for (int i = 0; i < 5; i++) { // loop through each encoder
             movementArray[2 + i] = encoders[i].currentValue; // store the current value of each encoder in the movement array
         }
 
         movementArray[0] = analogRead(X_Pin); // read the X-axis value from the joystick
         movementArray[1] = analogRead(Y_Pin); // read the Y-axis value from the joystick
-        movementArray[7] = 1;
-        if (movementArray[7] )
 
         memcpy(data, movementArray, sizeof(movementArray)); // copy the movement data into the data array to be sent
 
